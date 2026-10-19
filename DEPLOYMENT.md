@@ -36,6 +36,12 @@ Render 会构建 Docker 镜像，启动 Node 和 SymPy，使用 `/healthz` 检�
 
 ## 有云服务器时的持久部署
 
+阿里云 ECS / 轻量服务器可使用下面的 Compose 部署。若同机已有其他应用，为数学助手使用独立目录和 Compose 项目名 `math-helper`；设置 `.env` 中 `MATH_HTTP_BIND_PORT=18791`，反向代理指向 `127.0.0.1:18791`。只添加数学助手的域名路由，保留已有应用配置与数据卷。
+
+若已有 Caddy 在 Docker 容器中运行，设置 `.env` 的 `MATH_PROXY_NETWORK` 为其现有网络名，并使用 `docker compose -p math-helper -f compose.yaml -f compose.ecs.yaml up -d --build`。Caddy 的新子域名配置使用 `reverse_proxy math-helper-backend:8791`。此覆盖配置只给数学助手加入既有代理网络，并限制数学助手为 768 MB / 1 CPU；不更改既有服务。
+
+镜像构建后可运行 `docker compose -p math-helper -f compose.yaml -f compose.ecs.yaml exec -T math-assistant node scripts/check-container.mjs`，检查访问保护、前端资源、安全 Cookie、私密路径关闭和真实 SymPy 运算。该检查不调用订阅模型，也不输出访问密码或令牌。
+
 服务器安装 Docker / Compose，并给域名配置 DNS 和 HTTPS。将源码放在服务器，复制 `.env.example` 为 `.env`，填写域名和至少 24 字符的随机访问密码。不要提交 `.env`。然后运行：
 
 ```bash
@@ -45,6 +51,10 @@ docker compose up -d --build
 复制 `Caddyfile.example` 中的反向代理配置并替换域名。容器端口只映射到服务器回环地址，由 HTTPS 代理访问。Docker 的 `math-auth` 卷保存线上专用登录，保留该卷可在更新后继续使用。常规更新用 `docker compose up -d --build`，不要删除数据卷。
 
 Docker 监听 `0.0.0.0` 时要求访问保护；生产域名要求 HTTPS；HTTP 请求只接受所配置的域名和同源请求。浏览器会话在 HTTPS 模式设置 Secure Cookie，既有 CSRF 和路径检查继续执行。
+
+云端首次连接订阅时，app 会选择设备码授权，不启动浏览器所在电脑的 localhost 回调。打开页面给出的 OpenAI 授权链接、输入本次设备码并完成授权，保留 app 的连接窗口直到确认成功。设备码不写入源码、日志或发布记录。若账户未开启设备码登录，先在 ChatGPT 的安全设置中开启。通过设备码完成连接不等于已验证模型权限；仍须真实解一道题。
+
+确认云端完整应用可用后，设置 GitHub `Math_Helper` 的 Actions 变量 `MATH_CLOUD_URL=https://你的数学助手域名/`，重新运行 Pages 流程。Pages 将跳转到完整应用，网页、订阅和解题 API 都在同一域名下运行。
 
 ## 发布验收
 

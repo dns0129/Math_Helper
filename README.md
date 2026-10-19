@@ -29,6 +29,10 @@ npm start
 
 提供 Docker / Compose 和 Render Blueprint，可同时运行 Node 与 Python / SymPy。源码上传并不等于网站上线；部署后还需建立线上专用订阅登录并验证真实解题。平台配置和免费服务限制见 [部署说明](DEPLOYMENT.md)。
 
+完整云端应用采用设备码连接 ChatGPT 订阅：在 app 中点击「连接订阅」，前往 OpenAI 页面输入本次设备码并自行授权；云端自动确认并保存专用登录，不依赖电脑上的回调服务。使用持久数据卷保存云端登录；`MATH_AUTH_STORAGE=persistent` 用于标明已配置持久存储，设置此值本身不会创建存储。
+
+云端部署并验证成功后，将 GitHub 仓库的 Actions 变量 `MATH_CLOUD_URL` 设置为完整应用的 HTTPS 根地址，再运行 Pages 发布流程；原 Pages 地址就会自动进入云端完整版。未设置时继续保留静态演示，不能宣称后端已经上线。
+
 ## 订阅接入
 
 使用 `@earendil-works/pi-agent-core` 和 `@earendil-works/pi-ai` 1.1.0 的 `openai-codex` OAuth provider（Pi 将此接口标记为 legacy）。凭据按以下顺序读取：

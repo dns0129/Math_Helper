@@ -40,7 +40,7 @@ async function bodyJson(req){
   for await (const chunk of req){length+=chunk.length;if(length>9*1024*1024)throw new Error('请求内容过大。');parts.push(chunk);}
   try{return JSON.parse(Buffer.concat(parts).toString());}catch{throw new Error('请求 JSON 无效。');}
 }
-export function createAppServer({solver=solve,status=authStatus,runtime=runtimeConfig()}={}){
+export function createAppServer({solver=solve,status=authStatus,login=(...args)=>models.login(...args),runtime=runtimeConfig()}={}){
   const sessions=new Map();const logins=new Map();let activeRequests=0;
   const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   return http.createServer(async(req,res)=>{
@@ -70,12 +70,12 @@ export function createAppServer({solver=solve,status=authStatus,runtime=runtimeC
           const id=random();session={id,csrf:random(),expires:Date.now()+86400000};sessions.set(id,session);
           res.setHeader('Set-Cookie',`math_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${runtime.secure?'; Secure':''}`);
         }
-        return json(res,200,{csrf:session.csrf,...await status()});
+        return json(res,200,{csrf:session.csrf,...await status(),deployment:runtime.deployment});
       }
       if(pathname.startsWith('/api/')){
         if(!session)return json(res,401,{error:'页面会话已过期，请刷新页面。'});
         if(req.method==='POST' && req.headers['x-math-csrf']!==session.csrf)return json(res,403,{error:'请求验证失败，请刷新页面。'});
-        if(pathname==='/api/status' && req.method==='GET')return json(res,200,await status());
+        if(pathname==='/api/status' && req.method==='GET')return json(res,200,{...await status(),deployment:runtime.deployment});
         if(pathname==='/api/solve' && req.method==='POST'){
           const input=validateInput(await bodyJson(req));
           if(activeRequests>=2)return json(res,429,{error:'已有两道题正在解答，请稍后再试。'});
@@ -93,7 +93,7 @@ export function createAppServer({solver=solve,status=authStatus,runtime=runtimeC
         }
         if(pathname==='/api/login' && req.method==='POST'){
           if(logins.size)return json(res,409,{error:'已有订阅登录正在进行，请完成或取消它。'});
-          const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),300000);
+          const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),runtime.deployment.mode==='cloud'?900000:300000);
           res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'});
           res.flushHeaders();
           const send=e=>{if(!res.destroyed)res.write(`data: ${JSON.stringify(e)}\n\n`);};
@@ -101,11 +101,11 @@ export function createAppServer({solver=solve,status=authStatus,runtime=runtimeC
           res.on('close',()=>{if(!res.writableEnded)controller.abort();});
           const keepalive=setInterval(()=>{if(!res.destroyed)res.write(': keepalive\n\n');},12000);
           try{
-            await models.login(provider,'oauth',{
+            await login(provider,'oauth',{
               signal:controller.signal,
-              notify:e=>send(e.type==='auth_url'?{type:'auth_url',url:e.url}:{type:'progress',message:e.message || '请在浏览器完成登录…'}),
+              notify:e=>send(e.type==='auth_url'?{type:'auth_url',url:e.url}:e.type==='device_code'?{type:'device_code',userCode:e.userCode,verificationUri:e.verificationUri,expiresInSeconds:e.expiresInSeconds}:{type:'progress',message:e.message || '请在浏览器完成登录…'}),
               prompt:p=>{
-                if(p.type==='select')return Promise.resolve(p.options[0].id);
+                if(p.type==='select')return Promise.resolve((runtime.deployment.mode==='cloud'?p.options.find(option=>option.id==='device_code'):null)?.id || p.options[0].id);
                 send({type:'prompt',message:p.message});
                 return new Promise((resolve,reject)=>{
                   const abort=()=>{entry.resolve=null;reject(new Error('登录已取消。'));};
@@ -114,7 +114,7 @@ export function createAppServer({solver=solve,status=authStatus,runtime=runtimeC
                 });
               }
             });
-            send({type:'connected',status:await status()});
+            send({type:'connected',status:{...await status(),deployment:runtime.deployment}});
           }catch(error){send({type:'error',message:publicError(error)});}
           finally{clearTimeout(timeout);clearInterval(keepalive);entry.resolve=null;logins.delete(session.id);res.end();}
           return;

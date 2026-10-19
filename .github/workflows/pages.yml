@@ -34,6 +34,8 @@ jobs:
       - name: Verify the app
         run: npm test
       - name: Build the static demo
+        env:
+          VITE_MATH_CLOUD_URL: ${{ vars.MATH_CLOUD_URL }}
         run: npm run build:pages
       - name: Upload Pages files
         uses: actions/upload-pages-artifact@v4

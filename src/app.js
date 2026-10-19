@@ -8,8 +8,10 @@ import {demo,examples,exampleQuestion} from './demo.js';
 import {checkPresentation,checkSummary,checkText} from './checks.js';
 import {createTextStream} from './text-stream.js';
 import {solutionDraftBlocks} from '../lib/solution-draft.mjs';
+import {cloudAppUrl} from './hosting.js';
 
 const staticSite=import.meta.env.MODE==='pages';
+const cloudTarget=cloudAppUrl(import.meta.env.VITE_MATH_CLOUD_URL);
 const repositoryUrl='https://github.com/dns0129/Math_Helper';
 
 const paths={moon:'M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13',sun:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5',plus:'M12 5v14M5 12h14',book:'M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H4zM20 4h-4a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h3z',history:'M3 11a9 9 0 1 1 2.6 7M3 4v7h7M12 7v5l3 2',spark:'m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7Z',arrow:'M5 12h14m-6-6 6 6-6 6',image:'M4 4h16v16H4zM4 16l5-5 4 4 3-3 4 4M15 8h.01',chevron:'m9 5 7 7-7 7',check:'m5 12 4 4L19 6',settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4',copy:'M9 9h11v11H9zM5 15H3V3h12v2',download:'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',printer:'M6 8V3h12v5M6 17H3V8h18v9h-3M6 14h12v7H6z',close:'m6 6 12 12M6 18 18 6',trash:'M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7',link:'m10 14 4-4M8 15l-2 2a3 3 0 0 1-4-4l4-4a3 3 0 0 1 4 0M16 9l2-2a3 3 0 0 1 4 4l-4 4a3 3 0 0 1-4 0',plot:'M4 3v17h17M6 15l4-7 4 4 5-6',help:'M9 9a3 3 0 1 1 5 2c-2 1-2 2-2 3M12 18h.01',menu:'M4 6h16M4 12h16M4 18h16',stop:'M6 6h12v12H6z'};
@@ -75,6 +77,7 @@ function renderConnection(){
     $('#connect-button').innerHTML=`完整应用说明${icon('arrow')}`;
     return;
   }
+  $('.local-pill').textContent=state.status?.deployment?.mode==='cloud'?'云端运行':'仅在本机运行';
   const connected=state.status?.connected;
   $('.connection-dot').classList.toggle('connected',Boolean(connected));
   $('#connection-title').textContent=connected?'订阅凭据已连接':'连接你的 GPT 订阅';
@@ -226,7 +229,9 @@ function openSettings(){
 function openConnection(){
   if(staticSite){openStaticInfo();return;}
   const status=state.status || {};
-  openModal(`<div class="eyebrow">PI AGENT × CHATGPT</div><h2>${status.connected?'订阅连接已就绪':'连接你的 ChatGPT 订阅'}</h2><p>数学助手通过 Pi 的 Codex OAuth 接口调用订阅模型。凭据只在本机后端读取，网页不会收到令牌。</p><div class="auth-status-box"><span class="connection-dot ${status.connected?'connected':''}"></span><div><strong>${status.connected?escape(status.source):'尚未连接'}</strong><span>${status.lastVerification?'本次运行已完成真实调用验证':status.connected?'已找到凭据，等待真实解答验证':escape(status.message || '请先登录')}</span></div></div><div class="auth-help">可直接使用本机已有的 Pi / Codex 登录，也可以为数学助手建立专用连接。订阅的额度和模型权限由 OpenAI 账户决定。</div><div id="login-progress"></div><button class="primary-button wide" id="start-login">${status.connected?'建立数学助手专用连接':'通过 Pi 登录 ChatGPT'}${icon('arrow')}</button><button class="secondary-button wide" id="refresh-connection">重新检查本机登录</button><div class="auth-help small">若需要终端登录：在本项目运行 <code>npm run ai:login</code>。专用凭据保存在 <code>.local/auth.json</code>，删除该文件即可移除专用连接。</div>`,()=>{
+  const cloud=status.deployment?.mode==='cloud';
+  const storageNote=status.deployment?.authStorage==='ephemeral'?'当前云实例不持久保存登录，重启或休眠后可能需要重新连接。':status.deployment?.authStorage==='persistent'?'专用登录保存在云服务器的数据卷中，正常更新和重启后继续保留。':'专用登录仅由后端保存；请保留部署时使用的数据目录。';
+  openModal(`<div class="eyebrow">PI AGENT × CHATGPT</div><h2>${status.connected?'订阅连接已就绪':'连接你的 ChatGPT 订阅'}</h2><p>数学助手通过 Pi 的 Codex OAuth 接口调用订阅模型。凭据只在${cloud?'云端':'本机'}后端读取，网页不会收到令牌。</p><div class="auth-status-box"><span class="connection-dot ${status.connected?'connected':''}"></span><div><strong>${status.connected?escape(status.source):'尚未连接'}</strong><span>${status.lastVerification?'本次运行已完成真实调用验证':status.connected?'已找到凭据，等待真实解答验证':escape(status.message || '请先登录')}</span></div></div><div class="auth-help">${cloud?'通过设备码为这台云服务器建立专用连接，不依赖你电脑上的登录。':'可直接使用本机已有的 Pi / Codex 登录，也可以为数学助手建立专用连接。'}订阅的额度和模型权限由 OpenAI 账户决定。</div><div id="login-progress"></div><button class="primary-button wide" id="start-login">${status.connected?'建立数学助手专用连接':'通过 Pi 登录 ChatGPT'}${icon('arrow')}</button><button class="secondary-button wide" id="refresh-connection">重新检查${cloud?'云端':'本机'}登录</button><div class="auth-help small">${cloud?storageNote:'若需要终端登录：在本项目运行 <code>npm run ai:login</code>。专用凭据保存在 <code>.local/auth.json</code>，删除该文件即可移除专用连接。'}</div>`,()=>{
     $('#refresh-connection').onclick=async()=>{await refreshStatus();closeModal();toast(state.status.connected?'已找到订阅凭据。':state.status.message);};
     $('#start-login').onclick=async()=>{
       const controller=new AbortController();modalCleanup=()=>controller.abort();$('#start-login').disabled=true;
@@ -237,6 +242,10 @@ function openConnection(){
           if(e.type==='auth_url'){
             const url=new URL(e.url);if(url.protocol!=='https:' || !/(^|\.)openai\.com$/.test(url.hostname))throw new Error('授权地址不符合预期。');
             $('#login-progress').innerHTML=`<a class="primary-button auth-link" href="${escape(e.url)}" target="_blank" rel="noopener noreferrer">打开 ChatGPT 授权页面${icon('arrow')}</a><p class="auth-help">在新页面完成登录，然后回到这里。</p>`;
+          }
+          if(e.type==='device_code'){
+            const url=new URL(e.verificationUri);if(url.origin!=='https://auth.openai.com' || url.pathname!=='/codex/device' || url.search || url.hash || url.username || url.password)throw new Error('设备授权地址不符合预期。');
+            $('#login-progress').innerHTML=`<p class="auth-help">打开 OpenAI 授权页面，输入下方设备码。完成后回到这里，云端会自动确认连接。</p><div class="auth-device-code"><span>本次设备码</span><code>${escape(e.userCode)}</code></div><a class="primary-button auth-link" href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">打开 ChatGPT 授权页面${icon('arrow')}</a><p class="auth-help">若账户尚未开启设备码登录，请先在 ChatGPT 的安全设置中开启。关闭此窗口会取消本次连接。</p>`;
           }
           if(e.type==='prompt'){
             const block=document.createElement('div');block.innerHTML=`<label class="settings-label">${escape(e.message)}<input id="login-code" placeholder="粘贴回调地址或授权码" autocomplete="off"/></label><button class="secondary-button wide" id="send-login-code">提交授权码</button>`;$('#login-progress').append(block);$('#send-login-code').onclick=async()=>{try{const response=await api('/api/login/code',{code:$('#login-code').value});const json=await response.json();if(!response.ok)throw new Error(json.error);toast('已提交，正在确认连接。');}catch(error){toast(error.message);}};
@@ -284,5 +293,5 @@ function openStaticInfo(){
 }
 renderHome();
 settingsSave();
-async function initialize(){if(staticSite){state.status={connected:false,staticSite:true};renderConnection();return;}try{const response=await fetch('/api/bootstrap');if(!response.ok)throw new Error('本机服务连接失败。');state.status=await response.json();state.csrf=state.status.csrf;renderConnection();}catch(e){state.status={connected:false,message:e.message};renderConnection();toast(e.message);}}
+async function initialize(){if(staticSite && cloudTarget){window.location.replace(cloudTarget);return;}if(staticSite){state.status={connected:false,staticSite:true};renderConnection();return;}try{const response=await fetch('/api/bootstrap');if(!response.ok)throw new Error('本机服务连接失败。');state.status=await response.json();state.csrf=state.status.csrf;renderConnection();}catch(e){state.status={connected:false,message:e.message};renderConnection();toast(e.message);}}
 initialize();

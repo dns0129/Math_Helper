@@ -1,0 +1,14 @@
+services:
+  math-assistant:
+    mem_limit: 768m
+    cpus: 1
+    networks:
+      default:
+      proxy:
+        aliases:
+          - math-helper-backend
+
+networks:
+  proxy:
+    external: true
+    name: ${MATH_PROXY_NETWORK:?Set MATH_PROXY_NETWORK to the existing Caddy network}

@@ -2,6 +2,8 @@ services:
   - type: web
     name: tuiyan-math-assistant
     runtime: docker
+    repo: https://github.com/dns0129/Math_Helper
+    branch: main
     plan: free
     healthCheckPath: /healthz
     envVars:
@@ -9,8 +11,5 @@ services:
         generateValue: true
       - key: MATH_BIND_HOST
         value: 0.0.0.0
-      - key: MATH_PUBLIC_URL
-        fromService:
-          type: web
-          name: tuiyan-math-assistant
-          envVarKey: RENDER_EXTERNAL_URL
+      - key: MATH_AUTH_STORAGE
+        value: ephemeral

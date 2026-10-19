@@ -1,0 +1,30 @@
+name: Verify cloud backend container
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build the complete Node and SymPy app
+        run: docker build --tag math-helper:check .
+      - name: Verify the running cloud container
+        shell: bash
+        run: |
+          set -euo pipefail
+          export MATH_ACCESS_PASSWORD="$(openssl rand -hex 32)"
+          trap 'docker rm --force --volumes math-helper-check >/dev/null 2>&1 || true' EXIT
+          docker run --detach --name math-helper-check --memory=1g \
+            --env MATH_ACCESS_PASSWORD \
+            --env MATH_PUBLIC_URL=https://container.math.example \
+            --env MATH_AUTH_STORAGE=ephemeral \
+            math-helper:check
+          docker exec math-helper-check node scripts/check-container.mjs
