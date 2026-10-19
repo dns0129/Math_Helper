@@ -10,7 +10,7 @@ services:
     mem_limit: 1g
     cpus: 2
     healthcheck:
-      test: ["CMD", "node", "-e", "const host=new URL(process.env.MATH_PUBLIC_URL).host; fetch('http://127.0.0.1:'+process.env.PORT+'/healthz',{headers:{Host:host}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "const host=new URL(process.env.MATH_PUBLIC_URL).host;const req=require('node:http').get({hostname:'127.0.0.1',port:process.env.PORT,path:'/healthz',headers:{Host:host}},res=>{res.resume();if(res.statusCode!==200)process.exitCode=1;});req.setTimeout(4000,()=>req.destroy());req.on('error',()=>{process.exitCode=1;});"]
       interval: 30s
       timeout: 5s
       retries: 3

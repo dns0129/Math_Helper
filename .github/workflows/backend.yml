@@ -28,3 +28,13 @@ jobs:
             --env MATH_AUTH_STORAGE=ephemeral \
             math-helper:check
           docker exec math-helper-check node scripts/check-container.mjs
+          touch .env
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
+          const config=JSON.parse(execFileSync('docker',['compose','config','--format','json'],{encoding:'utf8'}));
+          const check=config.services['math-assistant'].healthcheck.test;
+          assert.equal(check[0],'CMD');
+          execFileSync('docker',['exec','math-helper-check',...check.slice(1)],{stdio:'inherit'});
+          console.log('Compose health check passed inside the real cloud container.');
+          NODE
