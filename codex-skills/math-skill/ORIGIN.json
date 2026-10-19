@@ -1,0 +1,47 @@
+{
+  "source_repository": "googlarz/math-skill",
+  "source_commit": "670ec0cd31067fbf8e92a27e517f17533a3b2a5f",
+  "source_path": ".",
+  "adapted_for": "Codex",
+  "upstream_files": {
+    "README.md": "09543e6a048c4e73f40e070ace736a605e83ba3f7baeb94734ec08e336bdbeb9",
+    "SKILL.md": "d1be046a59151113e9653d186898bbf76ffd8ab4c893379b57fef807a84199bc",
+    "references/claude-surface-playbook.md": "707d3a5c6fe088ca8415cf5c95d8a75583929738ad6a12aeccba3406e1d0f250",
+    "references/diagnostic-playbook.md": "76b8acd73d5941f860395426674f1165a24e257dae868f83225b1e43ec1cfc7c",
+    "references/diagram-reading-playbook.md": "6932ba6f8e4630d73775e22a0c0d96a540d6e01853767b89b5c5db27eacd0685",
+    "references/lesson-playbook.md": "965c88f998d10ea4b1c90ae7fd47bd99bcd7f04b75f6e541f56ca992cb1ce9dc",
+    "references/mastery-playbook.md": "c8810812b89292a2aac08a699b575f764b2fe48d28ccc3281c582bd40fce1d38",
+    "references/method-selection-playbook.md": "b794981bc3ab9c25f4b6c419b4d02eef247dce73d2091758f3e7a98c33618cd2",
+    "references/photo-mapping-playbook.md": "a5048ba4d8c4f87a07030fecf83ae0e8e1eec8bff3bccf14a3ad68ed06c45ee7",
+    "references/practice-playbook.md": "eda41aab233efca33ab000750e019bba402d4ee55f11d2cbdf6d53269d953acb",
+    "references/primary-school-playbook.md": "2659c2ef317a13d7bcd336515f6c5caa5bd7011775f6fae5f3e55ae9a1e38307",
+    "references/problem-mapping-playbook.md": "303a80b637d2c5fc5160078f60a545f4172da7036630487862500fbd76a1b711",
+    "references/proof-playbook.md": "832d677c1fc090ab626c16320bf2a861427d77d2696ec5f906531589c0b459fc",
+    "references/solver-loop-playbook.md": "20db2b7c5d796a1d0d7fe63e0dd5d5e437cfb22ff960c1b9952611ab019ab217",
+    "references/teaching-playbook.md": "8d6b5dafb8eb9695725f5e79295718a10de76430f1a77598a968d345dc3cfe78",
+    "references/verification-playbook.md": "45e997bc570bffc7fbf99b5ffcbd815037ea225328bb1c52f802c85012e62ec8",
+    "references/visualization-playbook.md": "48ff77326b6a2768ccb84f9cfe18636b615028a59a75eedc3719e26ec2b7efc4",
+    "scripts/bootstrap_env.sh": "86575c23a2bd8c83fe2d2c8f3bea131cc4c45e4106a23b8fc66fd1497cdf4ae3",
+    "scripts/math_manipulatives.py": "122a6dab562b47421039513362ebff05ffddb53df2e3b34f609b59d8009ab266",
+    "scripts/math_photo_helper.py": "a468df39f45c147dfbf08f947a3c37309388448aef792f575ac1834e71133bb4",
+    "scripts/math_practice.py": "143bb37eee0272b20b4ec283208fad480213bcae5ffae3433ef647110d10c6bc",
+    "scripts/math_table.py": "a6861f74299eb96831633747f4d871669d9ee1f167ea864006e9b17f3d402586",
+    "scripts/math_verify.py": "c05b40c80e5f923c689315f97d246d61de1637be732b14eeb46e45af4247d1ca",
+    "scripts/math_visualize.py": "ab65f2f30d666c1394b97738a169b5d48740aa7244784cafe4d60e6da1e87033",
+    "scripts/requirements.txt": "13a6e57e0183e202d0cc779612c0c67de5f97a28b80bf6563a411433d1e932a8",
+    "scripts/run_validation_suite.py": "9a04e8e9f5addeda129dcb48d44d5a8ed53015ce0d330bc612b6cfeb6ff8a0d7"
+  },
+  "adaptation_date": "2026-10-13",
+  "local_changes": [
+    "README.md",
+    "SKILL.md",
+    "agents/openai.yaml",
+    "references/codex-surface-playbook.md",
+    "references/photo-mapping-playbook.md",
+    "scripts/math_photo_helper.py",
+    "scripts/math_verify.py"
+  ],
+  "removed_files": [
+    "references/claude-surface-playbook.md"
+  ]
+}

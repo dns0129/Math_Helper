@@ -1,0 +1,28 @@
+{
+  "name": "tuiyan-math-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && node server.mjs",
+    "build": "vite build",
+    "build:pages": "vite build --mode pages --base=/Math_Helper/ --outDir=.release/pages-dist",
+    "start": "node server.mjs",
+    "publish:local": "node scripts/publish-local.mjs",
+    "publish:stop": "node scripts/publish-local.mjs --stop",
+    "test": "node --test tests/*.test.mjs",
+    "ai:check": "node scripts/check-ai.mjs",
+    "ai:math-check": "node scripts/check-math-integration.mjs",
+    "ai:login": "node scripts/login-ai.mjs"
+  },
+  "engines": {"node": ">=22.19.0"},
+  "dependencies": {
+    "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-agent-core": "1.1.0",
+    "dompurify": "^3.3.0",
+    "katex": "^0.19.0",
+    "marked": "^15.0.12",
+    "mathjs": "^15.2.0"
+  },
+  "devDependencies": {"vite": "^6.4.1"}
+}

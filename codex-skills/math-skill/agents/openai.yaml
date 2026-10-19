@@ -1,0 +1,3 @@
+interface:
+  display_name: "数学解题与验证"
+  short_description: "逐步讲解公式适用条件与推导逻辑，检查定义域并用本地计算脚本验算答案"

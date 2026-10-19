@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: tuiyan-math-assistant
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: MATH_ACCESS_PASSWORD
+        generateValue: true
+      - key: MATH_BIND_HOST
+        value: 0.0.0.0
+      - key: MATH_PUBLIC_URL
+        fromService:
+          type: web
+          name: tuiyan-math-assistant
+          envVarKey: RENDER_EXTERNAL_URL

@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+.local
+.env
+.env.*
+.release
+.sites-runtime
+evidence
+__pycache__
+*.pyc
+*.log

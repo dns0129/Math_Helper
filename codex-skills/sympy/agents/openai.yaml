@@ -1,0 +1,3 @@
+interface:
+  display_name: "SymPy 精确数学计算"
+  short_description: "精确计算方程、微积分与矩阵，保留变量假设和原始定义域并验证候选解"
