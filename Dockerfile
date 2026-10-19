@@ -19,7 +19,7 @@ COPY lib ./lib
 COPY scripts ./scripts
 COPY codex-skills ./codex-skills
 RUN mkdir -p /app/.local && chown -R node:node /app/.local
-ENV NODE_ENV=production MATH_BIND_HOST=0.0.0.0 PORT=8791 MATH_AUTH_FILE=/app/.local/auth.json MATH_PYTHON=/opt/math-env/bin/python
+ENV NODE_ENV=production MATH_BIND_HOST=0.0.0.0 PORT=8791 DEEPSEEK_CONFIG_FILE=/app/.local/deepseek.json MATH_PYTHON=/opt/math-env/bin/python
 USER node
 VOLUME ["/app/.local"]
 EXPOSE 8791

@@ -32,8 +32,9 @@ const login=await get('/access',false,{method:'POST',headers:{Cookie:loginPage.h
 assert.equal(login.status,303);
 const ownerCookie=login.headers['set-cookie'].find(value=>value.startsWith('math_session=')).split(';')[0];
 assert.equal((await get('/api/bootstrap',false,{headers:{Cookie:ownerCookie}})).status,200);
-for(const path of ['/.local/auth.json','/.env','/package.json'])assert.equal((await get(path,true)).status,404);
+for(const path of ['/.local/auth.json','/.local/deepseek.json','/.env','/package.json'])assert.equal((await get(path,true)).status,404);
 assert.deepEqual(skillManifest.map(skill=>skill.name),['math-skill','sympy']);
 const check=await symbolic({operation:'solve',expression:'sqrt(x+2)',rhs:'x'});
 assert.equal(check.result,'{2}');
-console.log(JSON.stringify({ok:true,httpsOrigin:origin.origin,accessProtection:true,browserLogin:true,assets:true,secureSession:true,privatePathsClosed:true,skills:skillManifest.map(skill=>skill.name),sympy:check.result,subscriptionConnected:status.connected,authStorage:status.deployment.authStorage}));
+assert.equal(status.provider,'deepseek');
+console.log(JSON.stringify({ok:true,httpsOrigin:origin.origin,accessProtection:true,browserLogin:true,assets:true,secureSession:true,privatePathsClosed:true,provider:status.provider,skills:skillManifest.map(skill=>skill.name),sympy:check.result,deepseekConfigured:status.connected,authStorage:status.deployment.authStorage}));

@@ -31,7 +31,7 @@ test('本机 API 必须持有会话及正确 CSRF，拒绝跨站和伪造 Host',
 });
 test('源代码、认证文件与路径穿越不能经静态服务读取',async t=>{
   const {base}=await fixture(t);
-  for(const path of ['/.local/auth.json','/package.json','/lib/auth.mjs','/node_modules/','/assets/%2e%2e%2f%2e%2e%2fpackage.json'])assert.equal((await fetch(base+path)).status,404);
+  for(const path of ['/.local/auth.json','/.local/deepseek.json','/package.json','/lib/auth.mjs','/node_modules/','/assets/%2e%2e%2f%2e%2e%2fpackage.json'])assert.equal((await fetch(base+path)).status,404);
 });
 test('断开浏览器请求会取消后端解题',async t=>{
   let cancelled;const aborted=new Promise(resolve=>cancelled=resolve);

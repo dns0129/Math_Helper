@@ -2,7 +2,7 @@ import {writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {solve} from '../lib/tutor.mjs';
 
-if(!process.argv.includes('--live')){console.log('加 --live 使用现有订阅验证生成中的解答文字。');process.exit(0);}
+if(!process.argv.includes('--live')){console.log('加 --live 使用DeepSeek API 额度验证生成中的解答文字。');process.exit(0);}
 const started=Date.now(),updates=[];
 const result=await solve({question:'解方程 2x+5=17。请用约 200 字解释移项、除以系数的依据，说明公式条件并核对答案，不画图。',mode:'detailed',reasoning:'medium',level:'初中'},event=>{
   if(event.type==='answer_delta'){

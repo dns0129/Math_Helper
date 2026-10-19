@@ -4,11 +4,11 @@ import {authStatus} from '../lib/auth.mjs';
 import {solve} from '../lib/tutor.mjs';
 
 if(!process.argv.includes('--live')){
-  console.log('请加 --live 运行四道真实模型题目；会使用当前 ChatGPT 订阅额度。');
+  console.log('请加 --live 运行四道真实模型题目；会使用DeepSeek API 额度。');
   process.exit(0);
 }
 const status=await authStatus();
-if(!status.connected)throw new Error('未找到可用订阅登录，无法执行真实模型验证。');
+if(!status.connected)throw new Error('尚未配置 DeepSeek API Key，无法执行真实模型验证。');
 const cases=[
   {id:'radical',mode:'detailed',question:'在实数域解方程 sqrt(x+2)=x。说明平方可能产生增根的原因，必须把原方程直接交给符号工具并检查候选解。',
     verify:r=>assert.ok(r.checks.some(c=>c.engine==='sympy' && c.operation==='solve' && c.result==='{2}' && c.completed))},

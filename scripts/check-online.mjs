@@ -18,12 +18,12 @@ try{
   const html=await page.text();assert.match(html,/推演/);
   const assets=[...html.matchAll(/(?:src|href)="(\/assets\/[^"<>]+)"/g)].map(match=>match[1]);
   assert.ok(assets.length>=2);for(const asset of assets)check('网页静态资源 '+asset,(await get(asset,true)).status,200);
-  const bootstrap=await get('/api/bootstrap',true);check('订阅状态接口',bootstrap.status,200);
+  const bootstrap=await get('/api/bootstrap',true);check('DeepSeek 状态接口',bootstrap.status,200);
   const cookie=bootstrap.headers.get('set-cookie');assert.match(cookie,/Secure/);assert.match(cookie,/HttpOnly/);
-  const body=await bootstrap.json();assert.equal(body.connected,true,'本机订阅未连接。');
+  const body=await bootstrap.json();assert.equal(body.connected,true,'DeepSeek 尚未配置。');
   report.subscription={connected:body.connected,source:body.source,model:body.defaultModel};
   const headers={Authorization:authorization,Cookie:cookie.split(';')[0],Origin:base,'X-Math-CSRF':body.csrf,'Content-Type':'application/json'};
-  for(const path of ['/.local/auth.json','/.local/online/access.json','/server.mjs'])check('凭据与源码路径关闭 '+path,(await get(path,true)).status,404);
+  for(const path of ['/.local/auth.json','/.local/deepseek.json','/.local/online/access.json','/server.mjs'])check('凭据与源码路径关闭 '+path,(await get(path,true)).status,404);
   check('跨站请求拒绝',(await fetch(base+'/api/solve',{method:'POST',headers:{...headers,Origin:'https://example.com'},body:JSON.stringify({question:'1+1'}),signal:AbortSignal.timeout(20000)})).status,403);
   const noCsrf={...headers};delete noCsrf['X-Math-CSRF'];
   check('缺失 CSRF 拒绝',(await fetch(base+'/api/solve',{method:'POST',headers:noCsrf,body:JSON.stringify({question:'1+1'}),signal:AbortSignal.timeout(20000)})).status,403);

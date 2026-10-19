@@ -1,12 +1,8 @@
-import {createInterface} from 'node:readline/promises';
-import {spawn} from 'node:child_process';
-import {models,provider,publicError} from '../lib/auth.mjs';
-const rl=createInterface({input:process.stdin,output:process.stdout});
-try{
-  await models.login(provider,'oauth',{
-    signal:AbortSignal.timeout(300000),
-    prompt:p=>p.type==='select'?Promise.resolve(p.options[0].id):rl.question(p.message+' ',{signal:p.signal}),
-    notify:e=>{if(e.type==='auth_url'){console.log('请在浏览器连接 ChatGPT：'+e.url);if(process.platform==='darwin'){const child=spawn('open',[e.url],{stdio:'ignore'});child.on('error',()=>{});}}else if(e.message)console.log(e.message);}
-  });
-  console.log('已连接。数学助手专用登录保存在 .local/auth.json，仅本机后端读取。');
-}catch(e){console.error(publicError(e));process.exitCode=1;}finally{rl.close();}
+import {configureDeepSeek,publicError} from '../lib/auth.mjs';
+if(!process.env.DEEPSEEK_API_KEY){
+  console.log('请打开数学助手网页，在「连接 DeepSeek」中填写 API Key。不要把密钥写入命令历史或源码。');
+  process.exitCode=1;
+}else{
+  try{await configureDeepSeek(process.env.DEEPSEEK_API_KEY);console.log('DeepSeek 官方接口验证通过，密钥已保存在后端私有配置中。');}
+  catch(error){console.error(publicError(error));process.exitCode=1;}
+}

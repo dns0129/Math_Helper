@@ -3,7 +3,7 @@ import {readFile,stat} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomBytes} from 'node:crypto';
-import {authStatus,models,provider,publicError} from './lib/auth.mjs';
+import {authStatus,configureDeepSeek,publicError} from './lib/auth.mjs';
 import {solve} from './lib/tutor.mjs';
 import {runtimeConfig} from './lib/runtime.mjs';
 import {ownerAccess} from './lib/access.mjs';
@@ -41,8 +41,8 @@ async function bodyJson(req){
   for await (const chunk of req){length+=chunk.length;if(length>9*1024*1024)throw new Error('请求内容过大。');parts.push(chunk);}
   try{return JSON.parse(Buffer.concat(parts).toString());}catch{throw new Error('请求 JSON 无效。');}
 }
-export function createAppServer({solver=solve,status=authStatus,login=(...args)=>models.login(...args),runtime=runtimeConfig()}={}){
-  const sessions=new Map();const logins=new Map();let activeRequests=0;
+export function createAppServer({solver=solve,status=authStatus,configure=configureDeepSeek,runtime=runtimeConfig()}={}){
+  const sessions=new Map();let activeRequests=0;
   const access=ownerAccess(runtime);
   const newSession=res=>{
     for(const [id,s] of sessions)if(s.expires<Date.now())sessions.delete(id);
@@ -116,39 +116,11 @@ export function createAppServer({solver=solve,status=authStatus,login=(...args)=
           finally{activeRequests--;clearTimeout(timeout);clearInterval(heartbeat);res.end();}
           return;
         }
-        if(pathname==='/api/login' && req.method==='POST'){
-          if(logins.size)return json(res,409,{error:'已有订阅登录正在进行，请完成或取消它。'});
-          const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),runtime.deployment.mode==='cloud'?900000:300000);
-          res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-Accel-Buffering':'no'});
-          res.flushHeaders();
-          const send=e=>{if(!res.destroyed)res.write(`data: ${JSON.stringify(e)}\n\n`);};
-          const entry={controller,resolve:null};logins.set(session.id,entry);
-          res.on('close',()=>{if(!res.writableEnded)controller.abort();});
-          const keepalive=setInterval(()=>{if(!res.destroyed)res.write(': keepalive\n\n');},12000);
-          try{
-            await login(provider,'oauth',{
-              signal:controller.signal,
-              notify:e=>send(e.type==='auth_url'?{type:'auth_url',url:e.url}:e.type==='device_code'?{type:'device_code',userCode:e.userCode,verificationUri:e.verificationUri,expiresInSeconds:e.expiresInSeconds}:{type:'progress',message:e.message || '请在浏览器完成登录…'}),
-              prompt:p=>{
-                if(p.type==='select')return Promise.resolve((runtime.deployment.mode==='cloud'?p.options.find(option=>option.id==='device_code'):null)?.id || p.options[0].id);
-                send({type:'prompt',message:p.message});
-                return new Promise((resolve,reject)=>{
-                  const abort=()=>{entry.resolve=null;reject(new Error('登录已取消。'));};
-                  p.signal?.addEventListener('abort',abort,{once:true});
-                  entry.resolve=value=>{p.signal?.removeEventListener('abort',abort);entry.resolve=null;resolve(value);};
-                });
-              }
-            });
-            send({type:'connected',status:{...await status(),deployment:runtime.deployment}});
-          }catch(error){send({type:'error',message:publicError(error)});}
-          finally{clearTimeout(timeout);clearInterval(keepalive);entry.resolve=null;logins.delete(session.id);res.end();}
-          return;
-        }
-        if(pathname==='/api/login/code' && req.method==='POST'){
-          const entry=logins.get(session.id);const body=await bodyJson(req);
-          if(!entry?.resolve)return json(res,409,{error:'当前没有等待输入的登录流程。'});
-          if(typeof body.code!=='string' || !body.code.trim() || body.code.length>4096)return json(res,400,{error:'请输入有效的回调地址或授权码。'});
-          entry.resolve(body.code.trim());return json(res,200,{ok:true});
+        if(pathname==='/api/config/deepseek' && req.method==='POST'){
+          const body=await bodyJson(req);
+          if(!body || typeof body.apiKey!=='string' || Object.keys(body).some(key=>key!=='apiKey'))return json(res,400,{error:'请仅提交 DeepSeek API Key。'});
+          await configure(body.apiKey,AbortSignal.timeout(15000));
+          return json(res,200,{...await status(),deployment:runtime.deployment});
         }
         return json(res,404,{error:'接口不存在。'});
       }
