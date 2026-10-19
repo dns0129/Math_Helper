@@ -5,6 +5,7 @@ import {request} from 'node:http';
 import {createAppServer} from '../server.mjs';
 import {runtimeConfig} from '../lib/runtime.mjs';
 import {cloudAppUrl} from '../src/hosting.js';
+import {selectProvider} from '../lib/provider-mode.mjs';
 
 function send(base,path,{method='GET',headers={},body}={}){
   return new Promise((resolve,reject)=>{
@@ -13,6 +14,24 @@ function send(base,path,{method='GET',headers={},body}={}){
     });req.on('error',reject);req.end(body);
   });
 }
+
+test('本机默认保留 Pi，只有显式配置才选择 DeepSeek',()=>{
+  assert.equal(selectProvider({}),'pi');assert.equal(selectProvider({MATH_AI_PROVIDER:'pi'}),'pi');
+  assert.equal(selectProvider({MATH_AI_PROVIDER:'deepseek'}),'deepseek');assert.throws(()=>selectProvider({MATH_AI_PROVIDER:'unknown'}));
+});
+test('本机 Pi 继续使用浏览器订阅登录，DeepSeek 配置不会替换本机连接',async t=>{
+  let selected,connected=false;
+  const server=createAppServer({runtime:runtimeConfig({publicUrl:'',accessPassword:'',bindHost:'127.0.0.1'}),status:async()=>({provider:'openai-codex',connected}),login:async(provider,type,interaction)=>{
+    assert.equal(provider,'openai-codex');assert.equal(type,'oauth');
+    selected=await interaction.prompt({type:'select',options:[{id:'browser'},{id:'device_code'}]});
+    interaction.notify({type:'auth_url',url:'https://auth.openai.com/oauth/authorize'});connected=true;
+  }});
+  server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>{server.closeAllConnections();server.close();});
+  const base=`http://127.0.0.1:${server.address().port}`;const bootstrap=await send(base,'/api/bootstrap');const data=await bootstrap.json();
+  const headers={Cookie:bootstrap.headers.get('set-cookie').split(';')[0],'X-Math-CSRF':data.csrf};
+  const login=await send(base,'/api/login',{method:'POST',headers});assert.equal(login.status,200);assert.match(await login.text(),/"type":"connected"/);assert.equal(selected,'browser');
+  const configure=await send(base,'/api/config/deepseek',{method:'POST',headers,body:'{}'});assert.equal(configure.status,409);
+});
 
 for(const cloud of [true,false])test(cloud?'云端 DeepSeek 配置受访问和 CSRF 保护，不回传密钥':'本机 DeepSeek 配置保存后可读取无密钥状态',async t=>{
   const password='test-cloud-owner-password-long-enough';

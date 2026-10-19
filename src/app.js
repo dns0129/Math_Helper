@@ -58,10 +58,10 @@ $('#app').innerHTML=`
     <button class="new-button" id="new-question">${icon('plus')}开始一道新题<span>⌘ K</span></button>
     <nav aria-label="主导航"><button class="nav-item selected" data-view="home">${icon('book')}解题工作台</button><button class="nav-item" data-view="history">${icon('history')}我的解题记录<span id="history-count">0</span></button><button class="nav-item" data-view="formulas">${icon('spark')}公式笔记</button></nav>
     <div class="recent-heading"><span>最近的题目</span><span>本机保存</span></div><div id="recent-list" class="recent-list"></div>
-    <div class="sidebar-footer"><div class="subscription-card"><div class="subscription-head"><span class="connection-dot"></span><strong id="connection-title">检查 DeepSeek 连接</strong></div><p id="connection-description">正在读取后端配置…</p><button id="connect-button">连接 DeepSeek${icon('arrow')}</button></div><div class="local-note"><span class="local-dot"></span>个人学习空间<button id="help-button" aria-label="使用说明">${icon('help')}</button></div></div>
+    <div class="sidebar-footer"><div class="subscription-card"><div class="subscription-head"><span class="connection-dot"></span><strong id="connection-title">检查模型连接</strong></div><p id="connection-description">正在读取模型连接…</p><button id="connect-button">连接模型${icon('arrow')}</button></div><div class="local-note"><span class="local-dot"></span>个人学习空间<button id="help-button" aria-label="使用说明">${icon('help')}</button></div></div>
   </aside>
   <div class="workspace"><header class="topbar"><div class="breadcrumbs"><button id="mobile-menu" aria-label="展开导航">${icon('menu')}</button><span>学习空间</span><i>/</i><strong id="page-label">解题工作台</strong></div><div class="topbar-right"><span class="local-pill">${staticSite?'GitHub Pages 演示':'仅在本机运行'}</span><button id="theme-button" class="icon-button" aria-label="切换深色模式" title="切换深色模式">${icon('spark')}</button><button id="settings-button" class="icon-button" aria-label="解答设置">${icon('settings')}</button><div class="avatar">Y</div></div></header>
-  <main id="main-content"></main><footer class="workspace-footer">把答案变成理解。<span>Powered by DeepSeek · SymPy 验算</span></footer></div>
+  <main id="main-content"></main><footer class="workspace-footer">把答案变成理解。<span id="model-provider-note">数学技能 · SymPy 验算</span></footer></div>
   <div id="modal-root"></div><div id="toast" class="toast" role="status" aria-live="polite"></div>`;
 
 function renderSidebar(){
@@ -79,13 +79,15 @@ function renderConnection(){
   }
   $('.local-pill').textContent=state.status?.deployment?.mode==='cloud'?'云端运行':'仅在本机运行';
   if(state.settings.model && !state.status?.models?.some(model=>model.id===state.settings.model)){state.settings.model=undefined;settingsSave();}
+  const pi=state.status?.provider==='openai-codex';
+  $('#model-provider-note').textContent=pi?'Powered by Pi Agent · ChatGPT 订阅':'Powered by DeepSeek · SymPy 验算';
   const connected=state.status?.connected;
   $('.connection-dot').classList.toggle('connected',Boolean(connected));
-  $('#connection-title').textContent=connected?'DeepSeek 已配置':'连接 DeepSeek';
-  $('#connection-description').textContent=connected?(state.status.lastVerification?'本次运行已完成真实模型调用。':`${state.status.source} · 等待首次解答验证`):'填写 DeepSeek 官方 API Key，由云端后端直接调用。';
-  $('#connect-button').innerHTML=`${connected?'管理连接':'连接 DeepSeek'}${icon('arrow')}`;
+  $('#connection-title').textContent=pi?(connected?'订阅凭据已连接':'连接你的 GPT 订阅'):(connected?'DeepSeek 已配置':'连接 DeepSeek');
+  $('#connection-description').textContent=connected?(state.status.lastVerification?'本次运行已完成真实模型调用。':`${state.status.source} · 等待首次解答验证`):pi?'通过 Pi 登录 ChatGPT，继续使用本机订阅。':'填写 DeepSeek 官方 API Key，由云端后端直接调用。';
+  $('#connect-button').innerHTML=`${connected?'管理连接':pi?'连接订阅':'连接 DeepSeek'}${icon('arrow')}`;
 }
-function composer(){return `<form class="composer" id="question-form"><div class="composer-heading"><span>${icon('book')} ${state.current?'继续追问，把疑惑说具体':'把题目交给推演'}</span><span class="keyboard-tip">⌘ / Ctrl + Enter 提交</span></div>${state.current?`<div class="context-tag">${icon('link')}正在追问：${escape(state.current.solution.title)}<button type="button" id="detach-context">作为新题</button></div>`:''}<label class="sr-only" for="question-input">数学或物理题目</label><textarea id="question-input" maxlength="8000" rows="4" placeholder="输入数学或物理题，也可以上传题目图片。\n例如：为什么求极值要先求导？请结合图像一步步解释。">${escape(state.question)}</textarea><div id="image-preview"></div><div class="composer-bottom"><div class="input-tools"><button type="button" class="upload-button" id="upload-button">${icon('image')}上传题目</button><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" hidden/><span class="input-note">${staticSite?'完整版支持题目图片':'可拖入或粘贴图片'}</span></div><button class="submit-button" id="submit-button" type="submit">${icon(state.busy?'stop':'arrow')}${state.busy?'停止解答':'开始解析'}</button></div><div class="composer-options"><div class="mode-switch" aria-label="讲解模式">${[['detailed','详细解析'],['hint','只给提示'],['check','检查我的解法']].map(([key,label])=>`<button type="button" class="${state.settings.mode===key?'active':''}" data-mode="${key}">${label}</button>`).join('')}</div><label class="level-select">学习程度<select id="level-select" aria-label="学习程度">${['自动判断','初中','高中','大学'].map(x=>`<option ${state.settings.level===x?'selected':''}>${x}</option>`).join('')}</select></label></div></form><p class="privacy-note">${staticSite?'在线演示不会发送题目或图片；真实解题、图片识别与 API 配置需运行完整应用。':'题目与图片会发送至 DeepSeek 进行解答；解题记录仅保存在此浏览器。图片最长边不限，文件最大 6 MB。'}</p>`;}
+function composer(){return `<form class="composer" id="question-form"><div class="composer-heading"><span>${icon('book')} ${state.current?'继续追问，把疑惑说具体':'把题目交给推演'}</span><span class="keyboard-tip">⌘ / Ctrl + Enter 提交</span></div>${state.current?`<div class="context-tag">${icon('link')}正在追问：${escape(state.current.solution.title)}<button type="button" id="detach-context">作为新题</button></div>`:''}<label class="sr-only" for="question-input">数学或物理题目</label><textarea id="question-input" maxlength="8000" rows="4" placeholder="输入数学或物理题，也可以上传题目图片。\n例如：为什么求极值要先求导？请结合图像一步步解释。">${escape(state.question)}</textarea><div id="image-preview"></div><div class="composer-bottom"><div class="input-tools"><button type="button" class="upload-button" id="upload-button">${icon('image')}上传题目</button><input type="file" id="image-input" accept="image/png,image/jpeg,image/webp" hidden/><span class="input-note">${staticSite?'完整版支持题目图片':'可拖入或粘贴图片'}</span></div><button class="submit-button" id="submit-button" type="submit">${icon(state.busy?'stop':'arrow')}${state.busy?'停止解答':'开始解析'}</button></div><div class="composer-options"><div class="mode-switch" aria-label="讲解模式">${[['detailed','详细解析'],['hint','只给提示'],['check','检查我的解法']].map(([key,label])=>`<button type="button" class="${state.settings.mode===key?'active':''}" data-mode="${key}">${label}</button>`).join('')}</div><label class="level-select">学习程度<select id="level-select" aria-label="学习程度">${['自动判断','初中','高中','大学'].map(x=>`<option ${state.settings.level===x?'selected':''}>${x}</option>`).join('')}</select></label></div></form><p class="privacy-note">${staticSite?'在线演示不会发送题目或图片；真实解题、图片识别与 API 配置需运行完整应用。':`题目与图片会发送至 ${state.status?.provider==='openai-codex'?'OpenAI':'DeepSeek'} 进行解答；解题记录仅保存在此浏览器。图片最长边不限，文件最大 6 MB。`}</p>`;}
 const diagramCleanups=[];
 function clearDiagrams(){diagramCleanups.splice(0).forEach(dispose=>dispose());}
 function showDiagram(container,diagram,options){diagramCleanups.push(mountDiagram(container,diagram,options));}
@@ -106,7 +108,7 @@ function renderResult(){
   const formulas=s.formulas || [],diagrams=s.diagrams || [];
   const all=state.tab==='all';
   $('#main-content').innerHTML=`<div class="result-intro"><div><div class="eyebrow">${state.isDemo?'内置讲解示例':'已整理成可复习的解答'}</div><h1>${escape(s.title)}</h1><p>${escape(s.subject)}<span>·</span>${state.isDemo?'示例未调用模型':`${escape(r.model)} · ${formatDate(r.createdAt)}`}</p></div><div class="result-actions"><button id="copy-result" class="icon-button" aria-label="复制解答">${icon('copy')}</button><button id="export-result" class="icon-button" aria-label="导出 Markdown 解答">${icon('download')}</button><button id="print-result" class="icon-button" aria-label="打印或保存 PDF">${icon('printer')}</button></div></div>
-  ${state.isDemo?`<div class="demo-notice">${staticSite?'这是内置讲解示例，未调用模型。真实解题与追问需运行完整应用。':'这是内置讲解示例。输入你自己的题目后，才会直接调用 DeepSeek API。'}</div>`:''}
+  ${state.isDemo?`<div class="demo-notice">${staticSite?'这是内置讲解示例，未调用模型。真实解题与追问需运行完整应用。':`这是内置讲解示例。输入你自己的题目后，才会${state.status?.provider==='openai-codex'?'通过 Pi 调用订阅模型':'直接调用 DeepSeek API'}。`}</div>`:''}
   <div class="question-summary"><span>题目</span><div>${md(state.isDemo?exampleQuestion:state.current.question || '图片题目')}</div></div>
   <div class="result-tabs" aria-label="解答视图">${[['all','完整解析'],['formulas',`公式卡片 · ${formulas.length}`],['diagrams',`图形 · ${diagrams.length}`]].map(([key,label])=>`<button data-tab="${key}" class="${state.tab===key?'active':''}">${label}</button>`).join('')}</div>
   <div class="solution-paper">${all?section('先读懂题目','01',`<div class="prose overview">${md(s.overview)}</div><div class="givens">${(s.givens || []).map(x=>`<div>${icon('check')}<div class="prose">${md(x)}</div></div>`).join('')}</div>`):''}
@@ -224,10 +226,43 @@ let modalCleanup=null,previousFocus;
 function closeModal(){modalCleanup?.();modalCleanup=null;$('#modal-root').innerHTML='';previousFocus?.focus();}
 function openModal(content,bind,cleanup){closeModal();previousFocus=document.activeElement;modalCleanup=cleanup;$('#modal-root').innerHTML=`<div class="modal-overlay"><section class="modal" role="dialog" aria-modal="true" aria-label="推演设置"><button class="modal-close icon-button" aria-label="关闭窗口">${icon('close')}</button>${content}</section></div>`;$('.modal-close').onclick=closeModal;$('.modal-overlay').addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeModal();});bind?.();$('.modal-close').focus();}
 function openSettings(){
+  const pi=state.status?.provider==='openai-codex';
   if(staticSite){openStaticInfo();return;}
-  openModal(`<div class="eyebrow">你的学习节奏</div><h2>解答设置</h2><p>选择模型和推理强度。模型目录不代表账户权限，成功解答才确认本次调用可用。</p><label class="settings-label">DeepSeek 模型<select id="model-setting">${(state.status?.models || []).map(m=>`<option value="${escape(m.id)}" ${m.id===(state.settings.model || state.status.defaultModel)?'selected':''}>${escape(m.name)}${m.image?' · 支持图片':''}</option>`).join('')}</select></label><label class="settings-label">推理强度<select id="reasoning-setting"><option value="medium" ${state.settings.reasoning==='medium'?'selected':''}>标准 · 适合日常题目</option><option value="high" ${state.settings.reasoning==='high'?'selected':''}>深入 · 适合复杂证明和综合题</option></select></label><div class="settings-note">更强的模型和更深的推理可能消耗更多 API 额度，按 DeepSeek 官方价格计费。调用失败会明确提示。</div><button class="primary-button wide" id="save-settings">保存设置${icon('check')}</button>`,()=>{$('#save-settings').onclick=()=>{state.settings.model=$('#model-setting').value || undefined;state.settings.reasoning=$('#reasoning-setting').value;settingsSave();closeModal();toast('设置已保存。');};});
+  openModal(`<div class="eyebrow">你的学习节奏</div><h2>解答设置</h2><p>选择模型和推理强度。模型目录不代表账户权限，成功解答才确认本次调用可用。</p><label class="settings-label">${pi?'订阅模型':'DeepSeek 模型'}<select id="model-setting">${(state.status?.models || []).map(m=>`<option value="${escape(m.id)}" ${m.id===(state.settings.model || state.status.defaultModel)?'selected':''}>${escape(m.name)}${m.image?' · 支持图片':''}</option>`).join('')}</select></label><label class="settings-label">推理强度<select id="reasoning-setting"><option value="medium" ${state.settings.reasoning==='medium'?'selected':''}>标准 · 适合日常题目</option><option value="high" ${state.settings.reasoning==='high'?'selected':''}>深入 · 适合复杂证明和综合题</option></select></label><div class="settings-note">${pi?'更强的模型和更深的推理可能消耗更多订阅额度，不会自动切换付费 API。':'更强的模型和更深的推理可能消耗更多 API 额度，按 DeepSeek 官方价格计费。'}</div><button class="primary-button wide" id="save-settings">保存设置${icon('check')}</button>`,()=>{$('#save-settings').onclick=()=>{state.settings.model=$('#model-setting').value || undefined;state.settings.reasoning=$('#reasoning-setting').value;settingsSave();closeModal();toast('设置已保存。');};});
+}
+function openPiConnection(){
+  if(staticSite){openStaticInfo();return;}
+  const status=state.status || {};
+  const cloud=status.deployment?.mode==='cloud';
+  const storageNote=status.deployment?.authStorage==='ephemeral'?'当前云实例不持久保存登录，重启或休眠后可能需要重新连接。':status.deployment?.authStorage==='persistent'?'专用登录保存在云服务器的数据卷中，正常更新和重启后继续保留。':'专用登录仅由后端保存；请保留部署时使用的数据目录。';
+  openModal(`<div class="eyebrow">PI AGENT × CHATGPT</div><h2>${status.connected?'订阅连接已就绪':'连接你的 ChatGPT 订阅'}</h2><p>数学助手通过 Pi 的 Codex OAuth 接口调用订阅模型。凭据只在${cloud?'云端':'本机'}后端读取，网页不会收到令牌。</p><div class="auth-status-box"><span class="connection-dot ${status.connected?'connected':''}"></span><div><strong>${status.connected?escape(status.source):'尚未连接'}</strong><span>${status.lastVerification?'本次运行已完成真实调用验证':status.connected?'已找到凭据，等待真实解答验证':escape(status.message || '请先登录')}</span></div></div><div class="auth-help">${cloud?'通过设备码为这台云服务器建立专用连接，不依赖你电脑上的登录。':'可直接使用本机已有的 Pi / Codex 登录，也可以为数学助手建立专用连接。'}订阅的额度和模型权限由 OpenAI 账户决定。</div><div id="login-progress"></div><button class="primary-button wide" id="start-login">${status.connected?'建立数学助手专用连接':'通过 Pi 登录 ChatGPT'}${icon('arrow')}</button><button class="secondary-button wide" id="refresh-connection">重新检查${cloud?'云端':'本机'}登录</button><div class="auth-help small">${cloud?storageNote:'若需要终端登录：在本项目运行 <code>npm run ai:login</code>。专用凭据保存在 <code>.local/auth.json</code>，删除该文件即可移除专用连接。'}</div>`,()=>{
+    $('#refresh-connection').onclick=async()=>{await refreshStatus();closeModal();toast(state.status.connected?'已找到订阅凭据。':state.status.message);};
+    $('#start-login').onclick=async()=>{
+      const controller=new AbortController();modalCleanup=()=>controller.abort();$('#start-login').disabled=true;
+      $('#login-progress').innerHTML='<div class="login-message">正在启动 Pi 登录…</div>';
+      try{
+        const response=await api('/api/login',{},controller.signal);
+        await events(response,e=>{
+          if(e.type==='auth_url'){
+            const url=new URL(e.url);if(url.protocol!=='https:' || !/(^|\.)openai\.com$/.test(url.hostname))throw new Error('授权地址不符合预期。');
+            $('#login-progress').innerHTML=`<a class="primary-button auth-link" href="${escape(e.url)}" target="_blank" rel="noopener noreferrer">打开 ChatGPT 授权页面${icon('arrow')}</a><p class="auth-help">在新页面完成登录，然后回到这里。</p>`;
+          }
+          if(e.type==='device_code'){
+            const url=new URL(e.verificationUri);if(url.origin!=='https://auth.openai.com' || url.pathname!=='/codex/device' || url.search || url.hash || url.username || url.password)throw new Error('设备授权地址不符合预期。');
+            $('#login-progress').innerHTML=`<p class="auth-help">打开 OpenAI 授权页面，输入下方设备码。完成后回到这里，云端会自动确认连接。</p><div class="auth-device-code"><span>本次设备码</span><code>${escape(e.userCode)}</code></div><a class="primary-button auth-link" href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">打开 ChatGPT 授权页面${icon('arrow')}</a><p class="auth-help">若账户尚未开启设备码登录，请先在 ChatGPT 的安全设置中开启。关闭此窗口会取消本次连接。</p>`;
+          }
+          if(e.type==='prompt'){
+            const block=document.createElement('div');block.innerHTML=`<label class="settings-label">${escape(e.message)}<input id="login-code" placeholder="粘贴回调地址或授权码" autocomplete="off"/></label><button class="secondary-button wide" id="send-login-code">提交授权码</button>`;$('#login-progress').append(block);$('#send-login-code').onclick=async()=>{try{const response=await api('/api/login/code',{code:$('#login-code').value});const json=await response.json();if(!response.ok)throw new Error(json.error);toast('已提交，正在确认连接。');}catch(error){toast(error.message);}};
+          }
+          if(e.type==='error')throw new Error(e.message);
+          if(e.type==='connected'){state.status=e.status;renderConnection();closeModal();toast('已连接 ChatGPT 订阅，可以开始解题。');}
+        });
+      }catch(e){if(e.name!=='AbortError'&&$('#login-progress')){$('#login-progress').innerHTML=`<p class="error-message">${escape(e.message)}</p>`;$('#start-login').disabled=false;}}
+    };
+  });
 }
 function openConnection(){
+  if(state.status?.provider==='openai-codex'){openPiConnection();return;}
   if(staticSite){openStaticInfo();return;}
   const status=state.status || {};
   const cloud=status.deployment?.mode==='cloud';
@@ -247,7 +282,11 @@ function openConnection(){
     };
   });
 }
-function openHelp(){if(staticSite){openStaticInfo();return;}openModal(`<div class="eyebrow">从题目到理解</div><h2>怎样使用推演</h2><ol class="help-list"><li><strong>连接 DeepSeek</strong><span>在「连接 DeepSeek」中填写官方 API Key，验证通过后保存在后端。</span></li><li><strong>输入题目</strong><span>输入文字、上传图片，或将截图粘贴到输入框。选择「详细解析」「只给提示」或「检查我的解法」。</span></li><li><strong>看懂每一步</strong><span>公式会说明适用条件，推导会解释原因。函数和几何图可缩放、查看坐标及下载。</span></li><li><strong>继续追问或复习</strong><span>解答下方可以追问；记录仅存此浏览器。可复制、导出 Markdown，或通过打印保存 PDF。</span></li></ol><div class="settings-note">尚未配置 API Key 时，仍可查看内置讲解示例。题目和上传图片会发送至 DeepSeek；历史记录不会同步到其他设备。关闭启动终端会停止本机服务。</div>`);}
+function openHelp(){
+  if(staticSite){openStaticInfo();return;}
+  const pi=state.status?.provider==='openai-codex';
+  openModal(`<div class="eyebrow">从题目到理解</div><h2>怎样使用推演</h2><ol class="help-list"><li><strong>${pi?'连接订阅':'配置 DeepSeek'}</strong><span>${pi?'复用本机 Pi / Codex 登录，或在「连接订阅」中登录 ChatGPT。':'在「连接 DeepSeek」中填写官方 API Key，验证后保存在云端。'}</span></li><li><strong>输入题目</strong><span>输入文字、上传图片，选择详细解析、只给提示或检查我的解法。</span></li><li><strong>看懂每一步</strong><span>公式说明适用条件，推导解释原因，关键计算由安全工具验算。</span></li><li><strong>追问或复习</strong><span>记录仅存此浏览器，可继续追问、复制、导出 Markdown 或保存 PDF。</span></li></ol><div class="settings-note">题目和图片会发送至 ${pi?'OpenAI，使用本机订阅额度':'DeepSeek，按官方 API 余额计费'}；历史记录不会同步到其他设备。</div>`);
+}
 async function refreshStatus(){try{const response=await fetch('/api/status');if(!response.ok)throw new Error('服务连接已断开，请刷新页面。');state.status=await response.json();renderConnection();}catch(e){toast(e.message);}}
 $('#new-question').onclick=newQuestion;
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{if(state.busy){toast('请先停止当前解答。');return;}b.dataset.view==='home'?renderHome():renderLibrary(b.dataset.view);});

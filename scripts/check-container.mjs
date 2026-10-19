@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {request} from 'node:http';
 import {symbolic} from '../lib/sympy.mjs';
 import {skillManifest} from '../lib/skills.mjs';
+import {createRequire} from 'node:module';
 
 const origin=new URL(process.env.MATH_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL);
 assert.equal(origin.protocol,'https:');
@@ -37,4 +38,6 @@ assert.deepEqual(skillManifest.map(skill=>skill.name),['math-skill','sympy']);
 const check=await symbolic({operation:'solve',expression:'sqrt(x+2)',rhs:'x'});
 assert.equal(check.result,'{2}');
 assert.equal(status.provider,'deepseek');
+const require=createRequire(import.meta.url);
+for(const name of ['@earendil-works/pi-agent-core','@earendil-works/pi-ai'])assert.throws(()=>require.resolve(name),{code:'MODULE_NOT_FOUND'});
 console.log(JSON.stringify({ok:true,httpsOrigin:origin.origin,accessProtection:true,browserLogin:true,assets:true,secureSession:true,privatePathsClosed:true,provider:status.provider,skills:skillManifest.map(skill=>skill.name),sympy:check.result,deepseekConfigured:status.connected,authStorage:status.deployment.authStorage}));

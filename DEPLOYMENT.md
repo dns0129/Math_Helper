@@ -1,6 +1,6 @@
 # 完整云端部署
 
-数学助手使用 Node 直接调用 DeepSeek，Python / SymPy 在同一容器中验算。不需要本机 ChatGPT 登录或 Pi Agent。源码和镜像不包含网站访问密码、DeepSeek API Key 或本机凭据。
+云端数学助手使用 Node 直接调用 DeepSeek，Python / SymPy 在同一容器中验算。云端设置 `MATH_AI_PROVIDER=deepseek`，镜像排除 Pi 可选依赖；本机原有 Pi Agent / ChatGPT 功能保留。源码和镜像不包含网站访问密码、DeepSeek API Key 或本机凭据。
 
 ## 已有阿里云服务器
 
@@ -59,6 +59,6 @@ Actions 变量 `MATH_CLOUD_URL` 填写完整云端 HTTPS 根地址，再运行 P
 
 ## 其他运行方式
 
-- 本机：`npm run build && npm start`，只监听 `127.0.0.1:8791`。本机与云端配置分开。
+- 本机：`npm run build && npm start`，只监听 `127.0.0.1:8791`，默认使用 Pi Agent / ChatGPT；本机与云端配置分开。显式设置 `MATH_AI_PROVIDER=deepseek` 可在本机测试 DeepSeek。
 - 临时隧道：**临时上线数学助手.command** 把独立本机服务发布到临时 HTTPS 地址，需持续保持 Mac 开机；访问密码位于忽略提交的 `.local/online/`。
 - Render Blueprint：使用 `render.yaml` 部署完整容器，URL 从平台环境变量读取。免费实例不持久保存本地文件，重新部署后可能需要重新填写 API Key；需要长期保存时使用持久存储。参见 [Render 官方说明](https://render.com/docs/free)。
