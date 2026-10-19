@@ -6,6 +6,7 @@ import {randomBytes} from 'node:crypto';
 import {authStatus,models,provider,publicError} from './lib/auth.mjs';
 import {solve} from './lib/tutor.mjs';
 import {runtimeConfig} from './lib/runtime.mjs';
+import {ownerAccess} from './lib/access.mjs';
 
 const root=fileURLToPath(new URL('.',import.meta.url));
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.woff2':'font/woff2','.woff':'font/woff','.ttf':'font/ttf','.png':'image/png','.ico':'image/x-icon'};
@@ -42,6 +43,14 @@ async function bodyJson(req){
 }
 export function createAppServer({solver=solve,status=authStatus,login=(...args)=>models.login(...args),runtime=runtimeConfig()}={}){
   const sessions=new Map();const logins=new Map();let activeRequests=0;
+  const access=ownerAccess(runtime);
+  const newSession=res=>{
+    for(const [id,s] of sessions)if(s.expires<Date.now())sessions.delete(id);
+    if(sessions.size>=100)return null;
+    const id=random();const session={id,csrf:random(),expires:Date.now()+86400000};sessions.set(id,session);
+    res.setHeader('Set-Cookie',`math_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${runtime.secure?'; Secure':''}`);
+    return session;
+  };
   const json=(res,code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   return http.createServer(async(req,res)=>{
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -52,23 +61,39 @@ export function createAppServer({solver=solve,status=authStatus,login=(...args)=
     const allowedHosts=runtime.host?[runtime.host]:[`127.0.0.1:${port}`,`localhost:${port}`];
     if(!allowedHosts.includes(req.headers.host))return json(res,403,{error:'只允许本机访问。'});
     const origin=runtime.origin || `http://${req.headers.host}`;
-    if((req.headers.origin && req.headers.origin!==origin) || req.headers['sec-fetch-site']==='cross-site')return json(res,403,{error:'已拒绝跨站请求。'});
     let pathname;try{pathname=decodeURIComponent(new URL(req.url,origin).pathname);}catch{return json(res,400,{error:'路径无效。'});}
+    const entranceNavigation=req.method==='GET' && ['/', '/access'].includes(pathname) && req.headers['sec-fetch-mode']==='navigate';
+    if((req.headers.origin && req.headers.origin!==origin) || (req.headers['sec-fetch-site']==='cross-site' && !entranceNavigation))return json(res,403,{error:'已拒绝跨站请求。'});
     if(pathname==='/healthz' && req.method==='GET')return json(res,200,{ok:true,service:'tuiyan-math-assistant'});
-    if(!runtime.authorized(req.headers.authorization)){
-      res.setHeader('WWW-Authenticate','Basic realm="Math Assistant", charset="UTF-8"');
-      return json(res,401,{error:'请用 owner 和部署时设置的访问密码登录数学助手。'});
-    }
     const cookie=req.headers.cookie?.match(/(?:^|;\s*)math_session=([a-f0-9]{48})(?:;|$)/)?.[1];
     let session=sessions.get(cookie);
     if(session && session.expires<Date.now()){sessions.delete(cookie);session=null;}
     try{
+      if(pathname==='/access' && runtime.protected){
+        if(req.method==='GET'){
+          if(session){res.writeHead(303,{Location:'/','Cache-Control':'no-store'});res.end();return;}
+          return access.page(res);
+        }
+        if(req.method==='POST'){
+          const result=await access.verify(req);
+          if(!result.ok)return access.page(res,result.message,result.code);
+          session=newSession(res);
+          if(!session)return json(res,429,{error:'页面会话过多，请稍后重试。'});
+          res.setHeader('Set-Cookie',[res.getHeader('Set-Cookie'),access.clearCookie()]);
+          res.writeHead(303,{Location:'/','Cache-Control':'no-store'});res.end();return;
+        }
+        return json(res,405,{error:'方法不支持。'});
+      }
+      if(!session && !runtime.authorized(req.headers.authorization)){
+        if(pathname==='/' && req.method==='GET' && req.headers.accept?.includes('text/html')){
+          res.writeHead(303,{Location:'/access','Cache-Control':'no-store'});res.end();return;
+        }
+        return json(res,401,{error:'请用 owner 和部署时设置的访问密码登录数学助手。'});
+      }
       if(pathname==='/api/bootstrap' && req.method==='GET'){
         if(!session){
-          for(const [id,s] of sessions)if(s.expires<Date.now())sessions.delete(id);
-          if(sessions.size>=100)return json(res,429,{error:'本机会话过多，请稍后重试。'});
-          const id=random();session={id,csrf:random(),expires:Date.now()+86400000};sessions.set(id,session);
-          res.setHeader('Set-Cookie',`math_session=${id}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${runtime.secure?'; Secure':''}`);
+          session=newSession(res);
+          if(!session)return json(res,429,{error:'页面会话过多，请稍后重试。'});
         }
         return json(res,200,{csrf:session.csrf,...await status(),deployment:runtime.deployment});
       }
