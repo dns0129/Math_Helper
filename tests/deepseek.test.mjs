@@ -7,7 +7,7 @@ import {createDeepSeekClient,readCompletion,DeepSeekError} from '../lib/deepseek
 import {solve} from '../lib/tutor.mjs';
 
 const key='sk-test-only-1234567890abcdefghijkl';
-const solution={title:'根式方程',subject:'代数',overview:'平方后检查增根',givens:[],formulas:[],steps:[{title:'筛选',explanation:'排除负根并代回',why:''}],answer:'x=2',verification:'代回原式成立',pitfalls:[],diagrams:[],followups:[],needsClarification:false};
+const solution={title:'根式方程',subject:'代数',overview:'平方后检查增根',givens:[],formulas:[],steps:[{title:'筛选',explanation:'排除负根并代回',why:''}],answer:'x=2',verification:'代回原式成立',pitfalls:[],diagrams:[],followups:[],needsClarification:false,fullSolution:'1. 已知 sqrt(x+2)=x，由根号非负得 x>=0。2. 两边平方得 x+2=x^2，移项得 x^2-x-2=0，分解为 (x-2)(x+1)=0，得 x=2 或 x=-1。3. x=-1 不满足 x>=0，舍去。4. 代入 x=2，左边 sqrt(4)=2 等于右边，故解为 x=2。'};
 const verified={...solution,calculations:[{engine:'math_symbolic',operation:'solve',expression:'sqrt(x+2)',rhs:'x'}],approximations:[]};
 const frame=value=>'data: '+JSON.stringify(value)+'\n\n';
 function streamResponse(parts,{done=true,finish='tool_calls'}={}){
@@ -65,7 +65,7 @@ test('直接 DeepSeek 流程执行真实 SymPy 验算后提交，不调用 Pi Ag
     return {message:{role:'assistant',content:null,reasoning_content:'PRIVATE',tool_calls:[call('present_verified_solution',verified)]},usage:{totalTokens:20}};
   }};
   const result=await solve({question:'在实数域解方程 sqrt(x+2)=x',mode:'detailed'},event=>events.push(event),AbortSignal.timeout(10000),{client});
-  assert.equal(count,1);assert.equal(result.solution.answer,'x=2');assert.equal(result.checks[0].result,'{2}');assert.equal(verifiedModel,'deepseek-flash');assert.equal(result.usage.totalTokens,20);
+  assert.equal(count,1);assert.equal(result.solution.fullSolution,solution.fullSolution);assert.equal(result.solution.answer,'x=2');assert.equal(result.checks[0].result,'{2}');assert.equal(verifiedModel,'deepseek-flash');assert.equal(result.usage.totalTokens,20);
   assert.doesNotMatch(JSON.stringify(result),/PRIVATE/);
 });
 test('多轮工具调用保留 reasoning_content，并在本地拒绝未开放工具和参数错误',async()=>{
@@ -87,4 +87,17 @@ test('图片走官方图像格式，提示模式不开放计算工具或给出�
     return {message:{role:'assistant',content:null,reasoning_content:'',tool_calls:[call('present_solution',{...solution,answer:'不应展示',overview:'尝试平方，但先检查非负条件'})]}};
   }};
   const result=await solve({question:'只给提示',mode:'hint',image:{mimeType:'image/png',data:'aGVsbG8='}},()=>{},AbortSignal.timeout(10000),{client});assert.equal(result.solution.answer,'');
+});
+
+test('AI漏写完整解答时要求补齐后才接收，保留已完成的验算',async()=>{
+  let count=0;
+  const client={status:async()=>({source:'test',defaultModel:'deepseek-flash',models:[{id:'deepseek-flash'}]}),complete:async request=>{
+    count++;
+    if(count===1)return {message:{role:'assistant',tool_calls:[call('present_verified_solution',{...verified,fullSolution:'   '})]}};
+    assert.match(request.messages.at(-1).content,/fullSolution/);
+    assert.ok(request.tools.some(t=>t.name==='present_solution'));
+    return {message:{role:'assistant',tool_calls:[call('present_solution',solution)]}};
+  }};
+  const result=await solve({question:'解方程 sqrt(x+2)=x'},()=>{},AbortSignal.timeout(10000),{client});
+  assert.equal(count,2);assert.equal(result.solution.fullSolution,solution.fullSolution);assert.equal(result.checks.length,1);
 });

@@ -55,7 +55,7 @@ test('明确题型缩小工具范围，图像与混合题保留能力；无图�
   const withGraph=createTutorTools({question:'求导数，请画图'}).tools.at(-1).parameters;
   assert.equal(noGraph.properties.diagrams.maxItems,0);assert.equal(withGraph.properties.diagrams.maxItems,3);
 });
-const candidate={answer:'x=2',diagrams:[],needsClarification:false};
+const candidate={answer:'x=2',diagrams:[],needsClarification:false,fullSolution:'已知 x=2，两边减去 2 得 x-2=0，代回原式成立，故 x=2。'};
 test('计算题先复核后开放提交，条件不足仍可澄清',async()=>{
   const session=createTutorTools({question:'解方程 x=2'});
   const initial=session.availableTools || session.tools;
@@ -82,7 +82,7 @@ test('Agent 加载两份固定来源技能，提示模式没有会泄露计算�
   const session=createTutorTools({mode:'hint',question:'求 x^2-4=0'});
   assert.deepEqual(session.tools.map(t=>t.name),['present_solution']);
   await session.tools[0].execute('hint',candidate);
-  assert.equal(session.solution.answer,'');assert.equal(session.checks.length,0);
+  assert.equal(session.solution.answer,'');assert.equal(session.solution.fullSolution,'');assert.equal(session.checks.length,0);
 });
 test('真实 SymPy 工具调用会进入解答记录和进度事件，满足计算要求',async()=>{
   const events=[],session=createTutorTools({question:'解方程 x^2-4=0'},e=>events.push(e));
@@ -103,4 +103,17 @@ test('错误、未确认和失败验证不能让待求解的题目跳过复核',
     assert.equal(session.checks[0].status,status);
     await assert.rejects(session.tools.find(t=>t.name==='present_solution').execute('present',candidate),/不能代替/);
   }
+});
+
+test('详细、检查和追问流程拒绝遗漏完整解答，澄清不伪造解法',async()=>{
+  for(const input of [{question:'证明结论'},{question:'检查我的证明',mode:'check'},{question:'为什么这一步成立',context:{question:'证明结论'}}]){
+    const session=createTutorTools(input),tool=session.tools.find(t=>t.name==='present_solution');
+    for(const fullSolution of [undefined,'','   '])await assert.rejects(tool.execute('missing',{...candidate,fullSolution}),/fullSolution/);
+    assert.equal(session.solution,undefined);
+    await tool.execute('complete',candidate);
+    assert.equal(session.solution.fullSolution,candidate.fullSolution);
+  }
+  const session=createTutorTools({question:'求三角形面积'});
+  await session.availableTools.find(t=>t.name==='request_clarification').execute('ask',{question:'底和高分别是多少？'});
+  assert.equal(session.solution.fullSolution,'');
 });

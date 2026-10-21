@@ -11,6 +11,3 @@ __pycache__/
 *.pyc
 .sites-runtime/
 .release/
-
-# Historical problems, model transcripts and screenshots stay local.
-evidence/

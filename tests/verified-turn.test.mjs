@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTutorTools} from '../lib/tutor.mjs';
 
-const answer={title:'根式方程',subject:'代数',overview:'平方并检查增根',givens:[],formulas:[],steps:[{title:'筛选',explanation:'排除负根并代回',why:''}],answer:'x=2',verification:'代回原式成立',pitfalls:[],diagrams:[],followups:[],needsClarification:false};
+const answer={title:'根式方程',subject:'代数',overview:'平方并检查增根',givens:[],formulas:[],steps:[{title:'筛选',explanation:'排除负根并代回',why:''}],answer:'x=2',verification:'代回原式成立',pitfalls:[],diagrams:[],followups:[],needsClarification:false,fullSolution:'1. 已知 sqrt(x+2)=x，由根号非负得 x>=0。2. 两边平方得 x+2=x^2，移项得 x^2-x-2=0，分解为 (x-2)(x+1)=0，得 x=2 或 x=-1。3. x=-1 不满足 x>=0，舍去。4. 代入 x=2，左边 sqrt(4)=2 等于右边，故解为 x=2。'};
 const request={...answer,calculations:[{engine:'math_symbolic',operation:'solve',expression:'sqrt(x+2)',rhs:'x'}],approximations:[]};
 
 test('一次提交执行真实验算后才接收解答，不需要第二次模型请求',async()=>{

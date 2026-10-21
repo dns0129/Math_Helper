@@ -24,10 +24,10 @@ test('新字段按语义顺序显示，最终文本可完整取回且不分割�
   assert.equal(queue.pending,0);
 });
 test('提示模式草稿不包含最终答案或隐藏字段，半截独立公式延后',()=>{
-  const value={title:'题目',overview:'先比较系数',answer:'两个根',thinking:'private',steps:[{title:'第一步',explanation:'找和与积',latex:'\\frac{'}]};
+  const value={title:'题目',overview:'先比较系数',answer:'两个根',fullSolution:'完整推导得到两个根',thinking:'private',steps:[{title:'第一步',explanation:'找和与积',latex:'\\frac{'}]};
   const blocks=solutionDraftBlocks(value,'hint');
   assert.ok(blocks.some(b=>b.id==='overview'));assert.ok(!blocks.some(b=>b.id==='answer' || b.id.endsWith('-latex')));
-  assert.doesNotMatch(JSON.stringify(blocks),/private|两个根/);
+  assert.doesNotMatch(JSON.stringify(blocks),/private|两个根|完整推导/);
   value.steps[0].latex='a+b=5';value.steps[0].why='展开比较系数';
   assert.ok(solutionDraftBlocks(value,'hint').some(b=>b.kind==='math' && b.text==='a+b=5'));
 });
@@ -59,4 +59,13 @@ test('限频草稿在关闭时刷新一次，关闭后不再推送，重试使�
   const retried=[],newEmitter=createDraftEmitter(e=>retried.push(e));
   newEmitter.accept(update('toolcall_delta',{overview:'修正后的讲解'},'call-b'));newEmitter.close();
   assert.equal(retried[0].id,'call-b');
+});
+
+test('完整解答在讲解末尾流出，长解答不被旧的8000字上限截断，澄清时不展示',()=>{
+  const fullSolution='逐步代入与变形。'.repeat(1200);
+  const solution={overview:'先讲方法',answer:'结果',verification:'检验',pitfalls:['注意条件'],fullSolution};
+  const blocks=solutionDraftBlocks(solution);
+  assert.equal(blocks.at(-1).id,'full-solution');assert.equal(blocks.at(-1).text,fullSolution);
+  assert.equal(solutionDraftBlocks(solution,'check').at(-1).text,fullSolution);
+  for(const blocks of [solutionDraftBlocks(solution,'hint'),solutionDraftBlocks({...solution,needsClarification:true})])assert.ok(!blocks.some(b=>b.id==='full-solution'));
 });
